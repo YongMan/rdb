@@ -10,7 +10,7 @@ import (
 	"math"
 	"strconv"
 
-	"github.com/cupcake/rdb/crc64"
+	"github.com/YongMan/rdb/crc64"
 )
 
 // A Decoder must be implemented to parse a RDB file.
@@ -64,6 +64,11 @@ type Decoder interface {
 // Decode parses a RDB file from r and calls the decode hooks on d.
 func Decode(r io.Reader, d Decoder) error {
 	decoder := &decode{d, make([]byte, 8), bufio.NewReader(r)}
+	return decoder.decode()
+}
+
+func DecodeFromBufio(r *bufio.Reader, d Decoder) error {
+	decoder := &decode{d, make([]byte, 8), r}
 	return decoder.decode()
 }
 
@@ -206,6 +211,7 @@ func (d *decode) decode() error {
 		case rdbFlagEOF:
 			d.event.EndDatabase(int(db))
 			d.event.EndRDB()
+			d.readUint64()
 			return nil
 		default:
 			key, err := d.readString()
@@ -628,7 +634,7 @@ func (d *decode) checkHeader() error {
 	}
 
 	version, _ := strconv.ParseInt(string(header[5:]), 10, 64)
-	if version < 1 || version > 7 {
+	if version < 1 || version > 8 {
 		return fmt.Errorf("rdb: invalid RDB version number %d", version)
 	}
 
